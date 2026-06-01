@@ -1,9 +1,12 @@
 param(
+    [ValidateSet("codebuddy", "codex", "claude")]
+    [string]$Client = "codebuddy",
     [Parameter(Mandatory = $true)]
     [ValidateSet("idle", "working", "waiting", "completed", "error")]
     [string]$State,
     [string]$Message = "",
-    [switch]$NotificationOnly
+    [switch]$NotificationOnly,
+    [switch]$EmitEmptyJson
 )
 
 $sessionsDir = Join-Path ([Environment]::GetFolderPath("UserProfile")) ".codebuddy-light\sessions"
@@ -94,6 +97,11 @@ function Get-AssistantText {
 function Get-LatestAssistantText {
     param([object]$EventData)
 
+    $lastAssistantMessage = [string](Get-EventValue $EventData "last_assistant_message")
+    if ($lastAssistantMessage.Trim()) {
+        return $lastAssistantMessage
+    }
+
     $transcriptPath = [string](Get-EventValue $EventData "transcript_path")
     if (-not $transcriptPath -or -not (Test-Path $transcriptPath -PathType Leaf)) {
         return ""
@@ -136,7 +144,13 @@ function Set-EventAwareState {
     param([object]$EventData)
 
     $eventName = [string](Get-EventValue $EventData "hook_event_name")
-    if ($eventName -eq "PreToolUse") {
+    if ($eventName -eq "PermissionRequest") {
+        $script:State = "waiting"
+        $script:Message = $textWaitingPermission
+    } elseif ($eventName -eq "PostToolUseFailure" -or $eventName -eq "StopFailure") {
+        $script:State = "error"
+        $script:Message = $textToolFailed
+    } elseif ($eventName -eq "PreToolUse") {
         $toolName = ([string](Get-EventValue $EventData "tool_name") -replace "[^a-zA-Z0-9]+", "").ToLower()
         $toolInput = Get-EventValue $EventData "tool_input"
         if ($toolName -in @("askuserquestion", "askuser", "requestuserinput", "elicitation")) {
@@ -190,10 +204,13 @@ if ($NotificationOnly) {
 
 Set-EventAwareState $eventData
 New-Item -ItemType Directory -Path $sessionsDir -Force | Out-Null
-$sessionFile = Join-Path $sessionsDir "$(Get-SafeSessionId $eventData).json"
+$sessionFile = Join-Path $sessionsDir "$Client-$(Get-SafeSessionId $eventData).json"
 
 if ($State -eq "idle") {
     Remove-Item $sessionFile -Force -ErrorAction SilentlyContinue
+    if ($EmitEmptyJson) {
+        [Console]::Out.WriteLine("{}")
+    }
     exit 0
 }
 
@@ -201,6 +218,7 @@ $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $cwd = Get-EventValue $eventData "cwd"
 if (-not $cwd) { $cwd = (Get-Location).Path }
 $content = @{
+    client = $Client
     state = $State
     message = $Message
     cwd = [string]$cwd
@@ -211,3 +229,6 @@ $temporaryFile = "$sessionFile.tmp.$PID"
 $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($temporaryFile, $content, $utf8WithoutBom)
 Move-Item -Path $temporaryFile -Destination $sessionFile -Force
+if ($EmitEmptyJson) {
+    [Console]::Out.WriteLine("{}")
+}

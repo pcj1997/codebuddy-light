@@ -97,8 +97,7 @@ pub fn run() {
                 .enabled(false)
                 .build(app)?;
             let show_item = MenuItemBuilder::with_id("show", "显示悬浮灯").build(app)?;
-            let setup_item =
-                MenuItemBuilder::with_id("setup", "安装 CodeBuddy Hooks").build(app)?;
+            let setup_item = MenuItemBuilder::with_id("setup", "安装 AI Hooks").build(app)?;
             let clear_sessions_item =
                 MenuItemBuilder::with_id("clear-sessions", "清除会话记录").build(app)?;
             let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);

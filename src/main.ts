@@ -19,6 +19,7 @@ interface StatusSnapshot {
 
 interface SessionSnapshot {
   id: string;
+  client: string;
   title: string;
   state: Status;
   label: string;
@@ -34,6 +35,12 @@ const hooksWarning = document.querySelector<HTMLElement>("#hooks-warning");
 const setupButton = document.querySelector<HTMLButtonElement>("#setup-hooks");
 const clearSessionsButton =
   document.querySelector<HTMLButtonElement>("#clear-sessions");
+
+function clientLabel(client: string) {
+  if (client === "codex") return "Codex";
+  if (client === "claude") return "Claude";
+  return "CodeBuddy";
+}
 
 function render(snapshot: StatusSnapshot) {
   document.body.dataset.state = snapshot.state;
@@ -73,13 +80,21 @@ function render(snapshot: StatusSnapshot) {
           await refresh();
         });
 
+        const heading = document.createElement("span");
+        heading.className = "session-heading";
+
+        const client = document.createElement("span");
+        client.className = "session-client";
+        client.textContent = clientLabel(session.client);
+
         const title = document.createElement("strong");
         title.textContent = session.title;
 
         const message = document.createElement("span");
         message.textContent = session.message || session.label;
 
-        content.append(title, message);
+        heading.append(client, title);
+        content.append(heading, message);
         item.append(dot, content, remove);
         return item;
       }),
@@ -94,7 +109,7 @@ async function refresh() {
   try {
     render(await invoke<StatusSnapshot>("get_status"));
   } catch (error) {
-    console.error("Failed to refresh CodeBuddy status", error);
+    console.error("Failed to refresh AI client status", error);
   }
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write a local demo session status without invoking CodeBuddy."""
+"""Write a local demo session status without invoking an AI coding client."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ else:
     path.write_text(
         json.dumps(
             {
+                "client": "codebuddy",
                 "state": args.state,
                 "message": "Local demo",
                 "timestamp": int(time.time()),
@@ -30,4 +31,3 @@ else:
         ),
         encoding="utf-8",
     )
-

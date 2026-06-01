@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write a CodeBuddy hook event to a per-session status file."""
+"""Write an AI coding client hook event to a per-session status file."""
 
 from __future__ import annotations
 
@@ -98,6 +98,10 @@ def assistant_text(record: Any) -> str:
 
 
 def latest_assistant_text(event: dict[str, Any]) -> str:
+    last_assistant_message = event.get("last_assistant_message")
+    if isinstance(last_assistant_message, str) and last_assistant_message.strip():
+        return last_assistant_message
+
     transcript_path = Path(str(event.get("transcript_path", "")))
     if not transcript_path.is_file():
         return ""
@@ -134,6 +138,10 @@ def stop_waits_for_user(event: dict[str, Any]) -> bool:
 
 def adjust_state(event: dict[str, Any], state: str, message: str) -> tuple[str, str]:
     event_name = str(event.get("hook_event_name", ""))
+    if event_name == "PermissionRequest":
+        return "waiting", "等待权限确认"
+    if event_name in {"PostToolUseFailure", "StopFailure"}:
+        return "error", "工具执行失败"
     if event_name == "PreToolUse":
         tool_input = event.get("tool_input")
         if normalized_tool_name(event) in ASK_TOOL_NAMES:
@@ -155,9 +163,11 @@ def adjust_state(event: dict[str, Any], state: str, message: str) -> tuple[str, 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--client", choices=("codebuddy", "codex", "claude"), default="codebuddy")
     parser.add_argument("--state", required=True)
     parser.add_argument("--message", default="")
     parser.add_argument("--notification-only", action="store_true")
+    parser.add_argument("--emit-empty-json", action="store_true")
     args = parser.parse_args()
 
     event = read_event()
@@ -176,20 +186,25 @@ def main() -> None:
             return
 
     args.state, args.message = adjust_state(event, args.state, args.message)
-    path = SESSIONS_DIR / f"{safe_session_id(event)}.json"
+    path = SESSIONS_DIR / f"{args.client}-{safe_session_id(event)}.json"
     if args.state == "idle":
         path.unlink(missing_ok=True)
+        if args.emit_empty_json:
+            print("{}")
         return
 
     write_json_atomic(
         path,
         {
+            "client": args.client,
             "state": args.state,
             "message": args.message,
             "cwd": str(event.get("cwd") or os.getcwd()),
             "timestamp": int(time.time()),
         },
     )
+    if args.emit_empty_json:
+        print("{}")
 
 
 if __name__ == "__main__":

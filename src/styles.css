@@ -230,6 +230,27 @@ body[data-state="idle"] .light-green {
   gap: 1px;
 }
 
+.session-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.session-heading strong {
+  min-width: 0;
+}
+
+.session-heading .session-client {
+  padding: 1px 3px;
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.1);
+  flex: 0 0 auto;
+  font-size: 8px;
+  line-height: 1.2;
+}
+
 .session-remove {
   width: 18px;
   height: 18px;

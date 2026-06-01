@@ -1,12 +1,17 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use sysinfo::{ProcessesToUpdate, System};
 
 const PROCESSING_STALE_SECS: u64 = 30 * 60;
 const INACTIVE_STALE_SECS: u64 = 24 * 60 * 60;
+const CLIENTS: [&str; 3] = ["codebuddy", "codex", "claude"];
+
+fn default_client() -> String {
+    "codebuddy".to_string()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum State {
@@ -51,6 +56,8 @@ impl State {
 
 #[derive(Debug, Deserialize)]
 struct SessionData {
+    #[serde(default = "default_client")]
+    client: String,
     state: String,
     #[serde(default)]
     message: String,
@@ -63,6 +70,7 @@ struct SessionData {
 #[derive(Debug, Clone, Serialize)]
 pub struct SessionSnapshot {
     pub id: String,
+    pub client: String,
     pub title: String,
     pub state: String,
     pub label: String,
@@ -115,16 +123,24 @@ fn is_expired(state: State, age: u64) -> bool {
     }
 }
 
-fn is_codebuddy_process(name: &str, executable: &str) -> bool {
+fn is_client_process(client: &str, name: &str, executable: &str) -> bool {
     let identity = format!("{name} {executable}").to_lowercase();
-    identity.contains("codebuddy")
-        && !identity.contains("codebuddy-light")
-        && !identity.contains("codebuddy light")
+    match client {
+        "codebuddy" => {
+            identity.contains("codebuddy")
+                && !identity.contains("codebuddy-light")
+                && !identity.contains("codebuddy light")
+        }
+        "codex" => identity.contains("codex"),
+        "claude" => identity.contains("claude"),
+        _ => false,
+    }
 }
 
-fn codebuddy_is_running(system: &System) -> bool {
+fn client_is_running(system: &System, client: &str) -> bool {
     system.processes().values().any(|process| {
-        is_codebuddy_process(
+        is_client_process(
+            client,
             &process.name().to_string_lossy(),
             &process
                 .exe()
@@ -132,6 +148,18 @@ fn codebuddy_is_running(system: &System) -> bool {
                 .unwrap_or_default(),
         )
     })
+}
+
+fn session_client_from_path(path: &Path) -> &'static str {
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("");
+    CLIENTS
+        .iter()
+        .copied()
+        .find(|client| stem.starts_with(&format!("{client}-")))
+        .unwrap_or("codebuddy")
 }
 
 fn session_paths() -> Vec<PathBuf> {
@@ -176,16 +204,24 @@ pub fn clear_sessions() -> usize {
 }
 
 pub struct SessionLifecycleMonitor {
-    codebuddy_was_running: bool,
-    observed_sessions: HashSet<PathBuf>,
+    clients_were_running: HashMap<&'static str, bool>,
+    observed_sessions: HashMap<&'static str, HashSet<PathBuf>>,
     system: System,
 }
 
 impl Default for SessionLifecycleMonitor {
     fn default() -> Self {
         Self {
-            codebuddy_was_running: false,
-            observed_sessions: HashSet::new(),
+            clients_were_running: CLIENTS
+                .iter()
+                .copied()
+                .map(|client| (client, false))
+                .collect(),
+            observed_sessions: CLIENTS
+                .iter()
+                .copied()
+                .map(|client| (client, HashSet::new()))
+                .collect(),
             system: System::new_all(),
         }
     }
@@ -194,15 +230,29 @@ impl Default for SessionLifecycleMonitor {
 impl SessionLifecycleMonitor {
     pub fn poll(&mut self) {
         self.system.refresh_processes(ProcessesToUpdate::All, true);
-        let codebuddy_is_running = codebuddy_is_running(&self.system);
-        if codebuddy_is_running {
-            self.observed_sessions.extend(session_paths());
-        } else if self.codebuddy_was_running {
-            for path in self.observed_sessions.drain() {
-                let _ = fs::remove_file(path);
+        let paths = session_paths();
+        for client in CLIENTS {
+            let is_running = client_is_running(&self.system, client);
+            let was_running = self
+                .clients_were_running
+                .get(client)
+                .copied()
+                .unwrap_or(false);
+            let observed = self.observed_sessions.entry(client).or_default();
+            if is_running {
+                observed.extend(
+                    paths
+                        .iter()
+                        .filter(|path| session_client_from_path(path) == client)
+                        .cloned(),
+                );
+            } else if was_running {
+                for path in observed.drain() {
+                    let _ = fs::remove_file(path);
+                }
             }
+            self.clients_were_running.insert(client, is_running);
         }
-        self.codebuddy_was_running = codebuddy_is_running;
     }
 }
 
@@ -255,6 +305,7 @@ pub fn read_status() -> StatusSnapshot {
             .to_string();
         session_count += 1;
         sessions.push(SessionSnapshot {
+            client: data.client,
             title: session_title(&id, &data.cwd),
             id,
             state: state.key().to_string(),
@@ -290,8 +341,8 @@ pub fn read_status() -> StatusSnapshot {
 #[cfg(test)]
 mod tests {
     use super::{
-        is_codebuddy_process, is_expired, session_title, valid_session_id, State,
-        INACTIVE_STALE_SECS, PROCESSING_STALE_SECS,
+        is_client_process, is_expired, session_client_from_path, session_title, valid_session_id,
+        State, INACTIVE_STALE_SECS, PROCESSING_STALE_SECS,
     };
 
     #[test]
@@ -319,19 +370,44 @@ mod tests {
     }
 
     #[test]
-    fn codebuddy_process_detection_excludes_the_status_light() {
-        assert!(is_codebuddy_process(
+    fn client_process_detection_supports_all_integrations() {
+        assert!(is_client_process(
+            "codebuddy",
             "Electron",
             "/Applications/CodeBuddy CN Enterprise.app/Contents/MacOS/Electron"
         ));
-        assert!(is_codebuddy_process(
+        assert!(is_client_process(
+            "codebuddy",
             "CodeBuddy CN.exe",
             r"C:\Program Files\CodeBuddy CN\CodeBuddy CN.exe"
         ));
-        assert!(!is_codebuddy_process(
+        assert!(!is_client_process(
+            "codebuddy",
             "codebuddy-light",
             "/Applications/CodeBuddy Light.app/Contents/MacOS/codebuddy-light"
         ));
+        assert!(is_client_process("codex", "codex", "/usr/local/bin/codex"));
+        assert!(is_client_process(
+            "claude",
+            "claude.exe",
+            r"C:\Users\me\AppData\Roaming\npm\claude.exe"
+        ));
+    }
+
+    #[test]
+    fn legacy_session_files_belong_to_codebuddy() {
+        assert_eq!(
+            session_client_from_path(std::path::Path::new("conversation-123.json")),
+            "codebuddy"
+        );
+        assert_eq!(
+            session_client_from_path(std::path::Path::new("codex-conversation-123.json")),
+            "codex"
+        );
+        assert_eq!(
+            session_client_from_path(std::path::Path::new("claude-conversation-123.json")),
+            "claude"
+        );
     }
 
     #[test]
