@@ -2,6 +2,12 @@
 
 AI Traffic Light 是一个面向 CodeBuddy CN、Codex 和 Claude Code 的跨平台桌面悬浮状态灯。它使用竖排红绿灯显示当前对话状态，并在系统托盘保留入口。目前支持 macOS 和 Windows。
 
+## 界面预览
+
+| 空闲跑马灯 | 多会话状态 | Hooks 安装提示 |
+| --- | --- | --- |
+| <img src="docs/images/idle-marquee.gif" width="266" alt="空闲状态下的红绿灯跑马灯动画"> | <img src="docs/images/multi-session.jpg" width="266" alt="按客户端分组展示多个会话状态"> | <img src="docs/images/hooks-installation.jpg" width="266" alt="独立显示的 Hooks 安装提示卡片"> |
+
 | 灯光 | 状态 | 说明 |
 | --- | --- | --- |
 | 黄灯闪烁 | 处理中 | AI 客户端正在处理消息或调用工具 |
