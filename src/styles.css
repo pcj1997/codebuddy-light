@@ -36,6 +36,7 @@ body {
 .housing {
   width: 64px;
   padding: 8px 8px 7px;
+  align-self: flex-start;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
   background:
