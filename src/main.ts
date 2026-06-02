@@ -32,10 +32,14 @@ const statusLabel = document.querySelector<HTMLElement>("#status-label");
 const sessionCount = document.querySelector<HTMLElement>("#session-count");
 const sessionList = document.querySelector<HTMLUListElement>("#session-list");
 const hooksWarning = document.querySelector<HTMLElement>("#hooks-warning");
+const hooksWarningMessage = document.querySelector<HTMLElement>(
+  "#hooks-warning-message",
+);
 const hooksStatus = document.querySelector<HTMLElement>("#hooks-status");
 const setupButton = document.querySelector<HTMLButtonElement>("#setup-hooks");
 const clearSessionsButton =
   document.querySelector<HTMLButtonElement>("#clear-sessions");
+let hooksSuccessVisibleUntil = 0;
 
 function clientLabel(client: string) {
   if (client === "codex") return "Codex";
@@ -117,9 +121,15 @@ async function refresh() {
 async function refreshHooksStatus() {
   if (!hooksWarning) return;
   try {
-    hooksWarning.hidden = await invoke<boolean>("hooks_installed");
+    const installed = await invoke<boolean>("hooks_installed");
+    const showSuccess = installed && Date.now() < hooksSuccessVisibleUntil;
+    hooksWarning.hidden = installed && !showSuccess;
+    if (hooksWarningMessage) hooksWarningMessage.hidden = installed;
+    if (setupButton) setupButton.hidden = installed;
   } catch (error) {
     hooksWarning.hidden = false;
+    if (hooksWarningMessage) hooksWarningMessage.hidden = false;
+    if (setupButton) setupButton.hidden = false;
     console.error("Failed to refresh Hooks status", error);
   }
 }
@@ -136,8 +146,12 @@ setupButton?.addEventListener("click", async () => {
   setupButton.textContent = "正在安装…";
   setHooksStatus("正在写入 Hooks 配置，请稍候。", "busy");
   try {
-    const message = await invoke<string>("install_hooks");
-    setHooksStatus(message, "success");
+    await invoke<string>("install_hooks");
+    hooksSuccessVisibleUntil = Date.now() + 8000;
+    setHooksStatus(
+      "Hooks 已安装。请重启已打开的 AI 客户端，并在新会话中验证状态。",
+      "success",
+    );
     await refreshHooksStatus();
   } catch (error) {
     setHooksStatus(`安装失败：${String(error)}`, "error");

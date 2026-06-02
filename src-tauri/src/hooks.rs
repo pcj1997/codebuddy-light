@@ -61,6 +61,22 @@ fn hook_script_name() -> &'static str {
     }
 }
 
+#[cfg(unix)]
+fn ensure_hook_executable(path: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mut permissions = fs::metadata(path)
+        .map_err(|error| error.to_string())?
+        .permissions();
+    permissions.set_mode(permissions.mode() | 0o100);
+    fs::set_permissions(path, permissions).map_err(|error| error.to_string())
+}
+
+#[cfg(not(unix))]
+fn ensure_hook_executable(_path: &Path) -> Result<(), String> {
+    Ok(())
+}
+
 fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
@@ -434,6 +450,13 @@ pub fn install(_app: &AppHandle) -> Result<String, String> {
     fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     fs::write(&destination, bundled_hook_content())
         .map_err(|error| format!("写入 Hook 失败（{}）：{}", destination.display(), error))?;
+    ensure_hook_executable(&destination).map_err(|error| {
+        format!(
+            "设置 Hook 执行权限失败（{}）：{}",
+            destination.display(),
+            error
+        )
+    })?;
 
     install_json_hooks(
         codebuddy_settings_path(),
@@ -460,8 +483,8 @@ pub fn install(_app: &AppHandle) -> Result<String, String> {
 mod tests {
     use super::{
         bundled_hook_content, codebuddy_configuration_matches, configuration_matches,
-        configure_claude_hooks, configure_codebuddy_hooks, configure_codex_hooks, hook,
-        install_json_hooks, Map,
+        configure_claude_hooks, configure_codebuddy_hooks, configure_codex_hooks,
+        ensure_hook_executable, hook, install_json_hooks, Map,
     };
     use serde_json::Value;
     use std::fs;
@@ -485,6 +508,30 @@ mod tests {
     #[test]
     fn bundled_hook_script_is_not_empty() {
         assert!(!bundled_hook_content().is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn installed_hook_script_is_executable() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let hook_path = std::env::temp_dir().join(format!("ai-traffic-light-hook-{unique}.py"));
+        fs::write(&hook_path, b"print('ok')").unwrap();
+        let mut permissions = fs::metadata(&hook_path).unwrap().permissions();
+        permissions.set_mode(0o600);
+        fs::set_permissions(&hook_path, permissions).unwrap();
+
+        ensure_hook_executable(&hook_path).unwrap();
+
+        assert_ne!(
+            fs::metadata(&hook_path).unwrap().permissions().mode() & 0o100,
+            0
+        );
+        let _ = fs::remove_file(hook_path);
     }
 
     #[test]

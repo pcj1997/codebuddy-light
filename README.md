@@ -34,7 +34,7 @@ pnpm tauri:dev
 
 启动后，应用会检查 Hooks 是否完整。仅在 Hooks 缺失或需要更新时，悬浮面板才会显示 **安装 Hooks** 按钮。安装器会把 Hook 脚本复制到 `~/.ai-traffic-light/hooks/`，并合并写入 `~/.codebuddy/settings.json`、`~/.codex/hooks.json` 和 `~/.claude/settings.json`。已有配置中的其他字段会保留。旧版 `~/.codebuddy-light/` Hook 会在重新安装时自动替换。
 
-三个客户端都会在新会话启动时读取 Hooks 快照。安装或更新 Hooks 后，请新建会话再验证灯光状态。Codex 首次使用时可在新会话中执行 `/hooks`，检查并信任新安装的 Hooks。
+三个客户端都会在新会话启动时读取 Hooks 快照。安装或更新 Hooks 后，请先重启已打开的 AI 客户端，再新建会话验证灯光状态。Codex 首次使用时可在新会话中执行 `/hooks`，检查并信任新安装的 Hooks。
 
 也可以从托盘菜单选择 **安装 AI Hooks**。
 
