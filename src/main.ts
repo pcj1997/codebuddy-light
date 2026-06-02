@@ -30,6 +30,7 @@ interface SessionSnapshot {
   label: string;
   message: string;
   updated_at: number;
+  created_at: number;
 }
 
 const lights = Array.from(document.querySelectorAll<HTMLElement>(".light"));
@@ -100,50 +101,63 @@ function render(snapshot: StatusSnapshot) {
         : "暂无会话记录";
   }
   if (sessionList) {
+    const clients = Array.from(
+      new Set(snapshot.sessions.map((session) => session.client)),
+    ).sort((left, right) => {
+      const firstOpenedAt = (client: string) =>
+        Math.min(
+          ...snapshot.sessions
+            .filter((session) => session.client === client)
+            .map((session) => session.created_at),
+        );
+      return firstOpenedAt(left) - firstOpenedAt(right);
+    });
     sessionList.replaceChildren(
-      ...snapshot.sessions.map((session) => {
-        const item = document.createElement("li");
-        item.className = `session-item session-${session.state}`;
+      ...clients.flatMap((client) => {
+        const groupTitle = document.createElement("li");
+        groupTitle.className = "session-group-title";
+        groupTitle.textContent = clientLabel(client);
 
-        const dot = document.createElement("span");
-        dot.className = "session-dot";
+        const sessions = snapshot.sessions
+          .filter((session) => session.client === client)
+          .map((session) => {
+            const item = document.createElement("li");
+            item.className = `session-item session-${session.state}`;
 
-        const content = document.createElement("span");
-        content.className = "session-content";
+            const dot = document.createElement("span");
+            dot.className = "session-dot";
 
-        const remove = document.createElement("button");
-        remove.className = "session-remove";
-        remove.type = "button";
-        remove.title = "删除会话记录";
-        remove.setAttribute("aria-label", `删除 ${session.title}`);
-        remove.textContent = "×";
-        remove.addEventListener("click", async () => {
-          remove.disabled = true;
-          await invoke("remove_session", { id: session.id });
-          await refresh();
-        });
+            const content = document.createElement("span");
+            content.className = "session-content";
 
-        const heading = document.createElement("span");
-        heading.className = "session-heading";
+            const remove = document.createElement("button");
+            remove.className = "session-remove";
+            remove.type = "button";
+            remove.title = "删除会话记录";
+            remove.setAttribute("aria-label", `删除 ${session.title}`);
+            remove.textContent = "×";
+            remove.addEventListener("click", async () => {
+              remove.disabled = true;
+              await invoke("remove_session", { id: session.id });
+              await refresh();
+            });
 
-        const client = document.createElement("span");
-        client.className = "session-client";
-        client.textContent = clientLabel(session.client);
+            const heading = document.createElement("span");
+            heading.className = "session-heading";
 
-        const title = document.createElement("strong");
-        title.textContent = session.title;
+            const title = document.createElement("strong");
+            title.textContent = session.title;
 
-        const details = document.createElement("span");
-        details.className = "session-details";
+            const message = document.createElement("span");
+            message.textContent = session.message || session.label;
 
-        const message = document.createElement("span");
-        message.textContent = session.message || session.label;
+            heading.append(title);
+            content.append(heading, message);
+            item.append(dot, content, remove);
+            return item;
+          });
 
-        heading.append(title);
-        details.append(client, message);
-        content.append(heading, details);
-        item.append(dot, content, remove);
-        return item;
+        return [groupTitle, ...sessions];
       }),
     );
   }

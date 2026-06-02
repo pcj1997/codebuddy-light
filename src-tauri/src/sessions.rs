@@ -65,6 +65,8 @@ struct SessionData {
     cwd: String,
     #[serde(default)]
     timestamp: u64,
+    #[serde(default)]
+    created_at: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -76,6 +78,7 @@ pub struct SessionSnapshot {
     pub label: String,
     pub message: String,
     pub updated_at: u64,
+    pub created_at: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -314,6 +317,11 @@ pub fn read_status() -> StatusSnapshot {
             label: state.label().to_string(),
             message: data.message.clone(),
             updated_at: data.timestamp,
+            created_at: if data.created_at == 0 {
+                data.timestamp
+            } else {
+                data.created_at
+            },
         });
         if state > best || (state == best && data.timestamp > best_timestamp) {
             best = state;

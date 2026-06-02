@@ -20,13 +20,20 @@ path.parent.mkdir(parents=True, exist_ok=True)
 if args.state == "idle":
     path.unlink(missing_ok=True)
 else:
+    timestamp = int(time.time())
+    try:
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        created_at = existing.get("created_at") or existing.get("timestamp") or timestamp
+    except (OSError, json.JSONDecodeError):
+        created_at = timestamp
     path.write_text(
         json.dumps(
             {
                 "client": "codebuddy",
                 "state": args.state,
                 "message": "Local demo",
-                "timestamp": int(time.time()),
+                "timestamp": timestamp,
+                "created_at": created_at,
             }
         ),
         encoding="utf-8",

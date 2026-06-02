@@ -63,6 +63,15 @@ def write_json_atomic(path: Path, content: dict[str, Any]) -> None:
     temporary_path.replace(path)
 
 
+def existing_created_at(path: Path, fallback: int) -> int:
+    try:
+        content = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return fallback
+    value = content.get("created_at") or content.get("timestamp")
+    return value if isinstance(value, int) else fallback
+
+
 def normalized_tool_name(event: dict[str, Any]) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(event.get("tool_name", "")).lower())
 
@@ -193,6 +202,7 @@ def main() -> None:
             print("{}")
         return
 
+    timestamp = int(time.time())
     write_json_atomic(
         path,
         {
@@ -200,7 +210,8 @@ def main() -> None:
             "state": args.state,
             "message": args.message,
             "cwd": str(event.get("cwd") or os.getcwd()),
-            "timestamp": int(time.time()),
+            "timestamp": timestamp,
+            "created_at": existing_created_at(path, timestamp),
         },
     )
     if args.emit_empty_json:

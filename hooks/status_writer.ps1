@@ -215,6 +215,17 @@ if ($State -eq "idle") {
 }
 
 $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+$createdAt = $epoch
+if (Test-Path $sessionFile -PathType Leaf) {
+    try {
+        $existing = Get-Content $sessionFile -Raw | ConvertFrom-Json
+        $existingCreatedAt = Get-EventValue $existing "created_at"
+        if (-not $existingCreatedAt) { $existingCreatedAt = Get-EventValue $existing "timestamp" }
+        if ($existingCreatedAt) { $createdAt = [long]$existingCreatedAt }
+    } catch {
+        $createdAt = $epoch
+    }
+}
 $cwd = Get-EventValue $eventData "cwd"
 if (-not $cwd) { $cwd = (Get-Location).Path }
 $content = @{
@@ -223,6 +234,7 @@ $content = @{
     message = $Message
     cwd = [string]$cwd
     timestamp = $epoch
+    created_at = $createdAt
 } | ConvertTo-Json -Compress
 
 $temporaryFile = "$sessionFile.tmp.$PID"

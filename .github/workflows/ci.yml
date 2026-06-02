@@ -51,6 +51,9 @@ jobs:
         run: |
           printf '{"session_id":"ci-test"}' | python3 hooks/status_writer.py --state working --message test
           test -f "$HOME/.ai-traffic-light/sessions/codebuddy-ci-test.json"
+          created_at="$(python3 -c 'import json, pathlib; print(json.loads(pathlib.Path.home().joinpath(".ai-traffic-light/sessions/codebuddy-ci-test.json").read_text())["created_at"])')"
+          printf '{"session_id":"ci-test"}' | python3 hooks/status_writer.py --state completed --message done
+          test "$created_at" = "$(python3 -c 'import json, pathlib; print(json.loads(pathlib.Path.home().joinpath(".ai-traffic-light/sessions/codebuddy-ci-test.json").read_text())["created_at"])')"
           printf '{"session_id":"ci-test"}' | python3 hooks/status_writer.py --state idle
           test ! -f "$HOME/.ai-traffic-light/sessions/codebuddy-ci-test.json"
           printf '{"session_id":"ci-claude","hook_event_name":"PermissionRequest"}' |
@@ -67,6 +70,9 @@ jobs:
         run: |
           '{"session_id":"ci-test"}' | powershell -NoProfile -ExecutionPolicy Bypass -File hooks/status_writer.ps1 -State working -Message test
           if (-not (Test-Path "$HOME/.ai-traffic-light/sessions/codebuddy-ci-test.json")) { exit 1 }
+          $createdAt = (Get-Content "$HOME/.ai-traffic-light/sessions/codebuddy-ci-test.json" -Raw | ConvertFrom-Json).created_at
+          '{"session_id":"ci-test"}' | powershell -NoProfile -ExecutionPolicy Bypass -File hooks/status_writer.ps1 -State completed -Message done
+          if ((Get-Content "$HOME/.ai-traffic-light/sessions/codebuddy-ci-test.json" -Raw | ConvertFrom-Json).created_at -ne $createdAt) { exit 1 }
           '{"session_id":"ci-test"}' | powershell -NoProfile -ExecutionPolicy Bypass -File hooks/status_writer.ps1 -State idle
           if (Test-Path "$HOME/.ai-traffic-light/sessions/codebuddy-ci-test.json") { exit 1 }
           '{"session_id":"ci-permission","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"requires_approval":true}}' |

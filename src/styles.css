@@ -195,6 +195,19 @@ body[data-state="idle"] .light-green {
   list-style: none;
 }
 
+.session-group-title {
+  padding: 2px 2px 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+.session-group-title:not(:first-child) {
+  margin-top: 3px;
+}
+
 .session-item {
   display: flex;
   align-items: center;
@@ -243,23 +256,6 @@ body[data-state="idle"] .light-green {
 
 .session-heading strong {
   min-width: 0;
-}
-
-.session-details {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 4px;
-}
-
-.session-details .session-client {
-  padding: 1px 3px;
-  border-radius: 3px;
-  color: rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.1);
-  flex: 0 0 auto;
-  font-size: 8px;
-  line-height: 1.2;
 }
 
 .session-remove {
