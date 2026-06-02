@@ -147,9 +147,9 @@ setupButton?.addEventListener("click", async () => {
   setHooksStatus("正在写入 Hooks 配置，请稍候。", "busy");
   try {
     await invoke<string>("install_hooks");
-    hooksSuccessVisibleUntil = Date.now() + 8000;
+    hooksSuccessVisibleUntil = Date.now() + 15000;
     setHooksStatus(
-      "Hooks 已安装。请重启已打开的 AI 客户端，并在新会话中验证状态。",
+      "Hooks 已安装。请重启 AI 客户端并新建会话。Codex 还需在新会话输入 /hooks，检查并信任 AI Traffic Light Hooks。",
       "success",
     );
     await refreshHooksStatus();

@@ -23,6 +23,13 @@ CodeBuddy / Codex / Claude Hooks
 
 CodeBuddy 当前没有单独的“普通回复正在等待用户选择” Hook。应用会优先使用工具确认信号，并在 `Stop` 时保守检查回复末尾是否明显在提问或列出选项。Codex 和 Claude Code 的标准 `PermissionRequest` 事件会直接显示等待确认。
 
+## Codex 首次启用
+
+> [!IMPORTANT]
+> Codex 首次使用 AI Traffic Light 时，安装 Hooks 后还需要在 Codex 的新会话中输入 `/hooks`，检查并信任 AI Traffic Light 写入的 Hooks。未完成信任前，Codex 会发现这些 Hooks，但不会执行它们，因此红绿灯不会跟随 Codex 会话变化。
+
+这是 Codex 对本机命令 Hook 的安全保护。AI Traffic Light 不会静默绕过该检查，也不会擅自替用户写入信任状态。Hooks 更新后，如果 Codex 提示定义发生变化，请再次通过 `/hooks` 检查并信任。
+
 ## 开发运行
 
 需要 Node.js、pnpm 和 Rust 工具链。Windows 端 Hook 使用系统自带 PowerShell，无需额外安装 Python。
@@ -34,7 +41,7 @@ pnpm tauri:dev
 
 启动后，应用会检查 Hooks 是否完整。仅在 Hooks 缺失或需要更新时，悬浮面板才会显示 **安装 Hooks** 按钮。安装器会把 Hook 脚本复制到 `~/.ai-traffic-light/hooks/`，并合并写入 `~/.codebuddy/settings.json`、`~/.codex/hooks.json` 和 `~/.claude/settings.json`。已有配置中的其他字段会保留。旧版 `~/.codebuddy-light/` Hook 会在重新安装时自动替换。
 
-三个客户端都会在新会话启动时读取 Hooks 快照。安装或更新 Hooks 后，请先重启已打开的 AI 客户端，再新建会话验证灯光状态。Codex 首次使用时可在新会话中执行 `/hooks`，检查并信任新安装的 Hooks。
+三个客户端都会在新会话启动时读取 Hooks 快照。安装或更新 Hooks 后，请先重启已打开的 AI 客户端，再新建会话验证灯光状态。Codex 用户还必须按照上方 **Codex 首次启用** 的说明，通过 `/hooks` 检查并信任新安装或发生变化的 Hooks。
 
 也可以从托盘菜单选择 **安装 AI Hooks**。
 

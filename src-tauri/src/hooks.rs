@@ -476,7 +476,10 @@ pub fn install(_app: &AppHandle) -> Result<String, String> {
         "Codex",
         configure_codex_hooks,
     )?;
-    Ok("CodeBuddy、Codex 和 Claude Hooks 已安装".to_string())
+    Ok(
+        "CodeBuddy、Codex 和 Claude Hooks 已安装。Codex 还需在新会话输入 /hooks，检查并信任 AI Traffic Light Hooks。"
+            .to_string(),
+    )
 }
 
 #[cfg(test)]
