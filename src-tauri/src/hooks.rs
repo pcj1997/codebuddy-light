@@ -247,6 +247,11 @@ fn configure_claude_hooks(hooks: &mut Map<String, Value>, destination: &Path) {
     );
     append_hook(
         hooks,
+        "PermissionDenied",
+        hook(destination, "claude", "error", "权限被拒绝"),
+    );
+    append_hook(
+        hooks,
         "PostToolUse",
         hook(destination, "claude", "working", "正在处理"),
     );
@@ -273,6 +278,46 @@ fn configure_claude_hooks(hooks: &mut Map<String, Value>, destination: &Path) {
         hooks,
         "PreCompact",
         hook(destination, "claude", "working", "正在压缩上下文"),
+    );
+    append_hook(
+        hooks,
+        "PostCompact",
+        hook(destination, "claude", "working", "正在处理"),
+    );
+    append_hook(
+        hooks,
+        "PostToolBatch",
+        hook(destination, "claude", "working", "正在处理"),
+    );
+    append_hook(
+        hooks,
+        "SubagentStart",
+        hook(destination, "claude", "working", "子任务处理中"),
+    );
+    append_hook(
+        hooks,
+        "SubagentStop",
+        hook(destination, "claude", "working", "正在处理"),
+    );
+    append_hook(
+        hooks,
+        "TaskCreated",
+        hook(destination, "claude", "working", "任务处理中"),
+    );
+    append_hook(
+        hooks,
+        "TaskCompleted",
+        hook(destination, "claude", "working", "正在处理"),
+    );
+    append_hook(
+        hooks,
+        "Elicitation",
+        hook(destination, "claude", "waiting", "等待补充信息"),
+    );
+    append_hook(
+        hooks,
+        "ElicitationResult",
+        hook(destination, "claude", "working", "正在处理补充信息"),
     );
     append_hook(
         hooks,
@@ -505,6 +550,29 @@ mod tests {
             let mut hooks = Map::new();
             configure(&mut hooks, destination);
             assert!(configuration_matches(&hooks, destination, configure));
+        }
+    }
+
+    #[test]
+    fn claude_hooks_cover_interactive_and_agent_events() {
+        let destination = Path::new("/tmp/ai-traffic-light/status_writer.py");
+        let mut hooks = Map::new();
+        configure_claude_hooks(&mut hooks, destination);
+
+        for event in [
+            "PermissionRequest",
+            "PermissionDenied",
+            "PostToolUseFailure",
+            "PostToolBatch",
+            "SubagentStart",
+            "SubagentStop",
+            "TaskCreated",
+            "TaskCompleted",
+            "Elicitation",
+            "ElicitationResult",
+            "StopFailure",
+        ] {
+            assert!(hooks[event].is_array(), "missing Claude hook for {event}");
         }
     }
 

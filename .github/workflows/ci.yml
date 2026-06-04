@@ -59,6 +59,12 @@ jobs:
           printf '{"session_id":"ci-claude","hook_event_name":"PermissionRequest"}' |
             python3 hooks/status_writer.py --client claude --state working --message test
           test "$(python3 -c 'import json, pathlib; print(json.loads(pathlib.Path.home().joinpath(".ai-traffic-light/sessions/claude-ci-claude.json").read_text())["state"])')" = "waiting"
+          printf '{"session_id":"ci-claude-elicit","hook_event_name":"Elicitation"}' |
+            python3 hooks/status_writer.py --client claude --state working --message test
+          test "$(python3 -c 'import json, pathlib; print(json.loads(pathlib.Path.home().joinpath(".ai-traffic-light/sessions/claude-ci-claude-elicit.json").read_text())["message"])')" = "等待补充信息"
+          printf '{"session_id":"ci-claude-denied","hook_event_name":"PermissionDenied"}' |
+            python3 hooks/status_writer.py --client claude --state working --message test
+          test "$(python3 -c 'import json, pathlib; print(json.loads(pathlib.Path.home().joinpath(".ai-traffic-light/sessions/claude-ci-claude-denied.json").read_text())["state"])')" = "error"
           output="$(printf '{"session_id":"ci-codex","hook_event_name":"Stop"}' |
             python3 hooks/status_writer.py --client codex --state completed --message done --emit-empty-json)"
           test "$output" = "{}"
@@ -83,6 +89,14 @@ jobs:
             powershell -NoProfile -ExecutionPolicy Bypass -File hooks/status_writer.ps1 -Client claude -State working -Message test
           $claudePermission = Get-Content "$HOME/.ai-traffic-light/sessions/claude-ci-claude.json" -Raw | ConvertFrom-Json
           if ($claudePermission.state -ne "waiting" -or $claudePermission.client -ne "claude") { exit 1 }
+          '{"session_id":"ci-claude-elicit","hook_event_name":"Elicitation"}' |
+            powershell -NoProfile -ExecutionPolicy Bypass -File hooks/status_writer.ps1 -Client claude -State working -Message test
+          $claudeElicitation = Get-Content "$HOME/.ai-traffic-light/sessions/claude-ci-claude-elicit.json" -Raw | ConvertFrom-Json
+          if ($claudeElicitation.state -ne "waiting" -or $claudeElicitation.message -ne "等待补充信息") { exit 1 }
+          '{"session_id":"ci-claude-denied","hook_event_name":"PermissionDenied"}' |
+            powershell -NoProfile -ExecutionPolicy Bypass -File hooks/status_writer.ps1 -Client claude -State working -Message test
+          $claudeDenied = Get-Content "$HOME/.ai-traffic-light/sessions/claude-ci-claude-denied.json" -Raw | ConvertFrom-Json
+          if ($claudeDenied.state -ne "error" -or $claudeDenied.message -ne "权限被拒绝") { exit 1 }
           $codexStopOutput = '{"session_id":"ci-codex","hook_event_name":"Stop"}' |
             powershell -NoProfile -ExecutionPolicy Bypass -File hooks/status_writer.ps1 -Client codex -State completed -Message done -EmitEmptyJson
           if ($codexStopOutput -ne "{}") { exit 1 }

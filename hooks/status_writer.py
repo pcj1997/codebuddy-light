@@ -149,6 +149,10 @@ def adjust_state(event: dict[str, Any], state: str, message: str) -> tuple[str, 
     event_name = str(event.get("hook_event_name", ""))
     if event_name == "PermissionRequest":
         return "waiting", "等待权限确认"
+    if event_name == "Elicitation":
+        return "waiting", "等待补充信息"
+    if event_name == "PermissionDenied":
+        return "error", "权限被拒绝"
     if event_name in {"PostToolUseFailure", "StopFailure"}:
         return "error", "工具执行失败"
     if event_name == "PreToolUse":

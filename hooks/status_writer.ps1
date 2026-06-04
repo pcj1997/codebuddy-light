@@ -23,6 +23,7 @@ $textWaitingInput = [regex]::Unescape("\u7b49\u5f85\u8865\u5145\u4fe1\u606f")
 $textCompleted = [regex]::Unescape("\u56de\u590d\u5b8c\u6210")
 $textWaitingChoice = [regex]::Unescape("\u7b49\u5f85\u9009\u62e9")
 $textToolFailed = [regex]::Unescape("\u5de5\u5177\u6267\u884c\u5931\u8d25")
+$textPermissionDenied = [regex]::Unescape("\u6743\u9650\u88ab\u62d2\u7edd")
 $textWaitingChoiceOrConfirmation = [regex]::Unescape("\u7b49\u5f85\u9009\u62e9\u6216\u786e\u8ba4")
 $questionCuePattern = "\u8bf7\u9009\u62e9|\u8bf7\u786e\u8ba4|\u9009\u62e9\u4e00\u4e2a|\u9009\u9879|\u4f60\u5e0c\u671b|\u4f60\u60f3|\u662f\u5426|\u8981\u4e0d\u8981|\u54ea\u4e2a|\u54ea\u79cd|\u56de\u590d|choose|select|confirm|which"
 $optionLinePattern = "(?m)^\s*(?:[-*]\s+|\d+[.)\u3001]\s*|[A-Da-d][.)\u3001]\s*)"
@@ -155,6 +156,12 @@ function Set-EventAwareState {
     if ($eventName -eq "PermissionRequest") {
         $script:State = "waiting"
         $script:Message = $textWaitingPermission
+    } elseif ($eventName -eq "Elicitation") {
+        $script:State = "waiting"
+        $script:Message = $textWaitingInput
+    } elseif ($eventName -eq "PermissionDenied") {
+        $script:State = "error"
+        $script:Message = $textPermissionDenied
     } elseif ($eventName -eq "PostToolUseFailure" -or $eventName -eq "StopFailure") {
         $script:State = "error"
         $script:Message = $textToolFailed
