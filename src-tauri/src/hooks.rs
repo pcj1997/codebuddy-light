@@ -477,7 +477,7 @@ pub fn install(_app: &AppHandle) -> Result<String, String> {
         configure_codex_hooks,
     )?;
     Ok(
-        "CodeBuddy、Codex 和 Claude Hooks 已安装。Codex 还需在新会话输入 /hooks，检查并信任 AI Traffic Light Hooks。"
+        "CodeBuddy、Codex 和 Claude Hooks 已安装。Codex 桌面版请按新对话顶部提示信任 Hooks；CLI 可输入 /hooks 检查并信任。"
             .to_string(),
     )
 }

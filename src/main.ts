@@ -205,7 +205,7 @@ setupButton?.addEventListener("click", async () => {
     await invoke<string>("install_hooks");
     hooksSuccessVisibleUntil = Date.now() + 15000;
     setHooksStatus(
-      "Hooks 已安装。请重启 AI 客户端并新建会话。Codex 还需在新会话输入 /hooks，检查并信任 AI Traffic Light Hooks。",
+      "Hooks 已安装。请重启 AI 客户端并新建会话。Codex 桌面版请按新对话顶部提示信任 Hooks；CLI 可输入 /hooks 检查并信任。",
       "success",
     );
     await refreshHooksStatus();
